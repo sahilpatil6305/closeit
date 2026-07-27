@@ -4,6 +4,9 @@ const envSchema = z.object({
   DATABASE_URL: z
     .string()
     .min(1, { message: "DATABASE_URL environment variable is required." }),
+  AUTH_SECRET: z
+    .string()
+    .min(1, { message: "AUTH_SECRET environment variable is required." }),
 });
 
 const parseEnv = () => {
