@@ -1,5 +1,8 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// ============================================================
+// Closeit — Prisma Schema
+// marketplace_v1
+// ============================================================
+// Learn more: https://pris.ly/d/prisma-schema
 
 generator client {
   provider = "prisma-client"
@@ -10,20 +13,56 @@ datasource db {
   provider = "postgresql"
 }
 
-enum TaskStatus {
-  TODO
-  IN_PROGRESS
-  DONE
+// ============================================================
+// ENUMS
+// ============================================================
+
+/// Physical condition of a thrifted / second-hand item.
+enum ListingCondition {
+  NEW_WITH_TAGS
+  LIKE_NEW
+  EXCELLENT
+  GOOD
+  FAIR
 }
 
-enum TaskPriority {
-  LOW
-  MEDIUM
-  HIGH
+/// Lifecycle state of a listing.
+/// DRAFT   – saved but not yet published
+/// ACTIVE  – visible on the marketplace
+/// RESERVED – held for a buyer pending payment (future)
+/// SOLD    – purchase completed
+/// ARCHIVED – removed from sale by the seller
+enum ListingStatus {
+  DRAFT
+  ACTIVE
+  RESERVED
+  SOLD
+  ARCHIVED
 }
+
+/// Lifecycle state of an order.
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+/// Supported transaction currencies.
+/// Start with INR; add more values here as markets expand.
+enum Currency {
+  INR
+}
+
+// ============================================================
+// AUTH.JS MODELS  (do not modify — required by PrismaAdapter)
+// ============================================================
 
 model User {
   id            String    @id @default(cuid())
+  // ----- Auth fields (do not remove) -----
   name          String?
   email         String    @unique
   emailVerified DateTime?
@@ -32,11 +71,29 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts      Account[]
-  sessions      Session[]
-  projects      Project[]
-  assignedTasks Task[]    @relation("AssignedTasks")
-  comments      Comment[]
+  // ----- Marketplace profile fields -----
+  displayName      String?
+  /// Unique handle used in profile URLs (e.g. @sahil). Nullable so
+  /// existing users are not broken; encourage fill-in via onboarding.
+  username         String?  @unique
+  bio              String?
+  /// Profile photo URL (separate from Auth.js `image` which comes from OAuth).
+  avatar           String?
+  phone            String?
+  city             String?
+  country          String?
+  isVerifiedSeller Boolean  @default(false)
+
+  // ----- Auth.js relations (do not remove) -----
+  accounts Account[]
+  sessions Session[]
+
+  // ----- Marketplace relations -----
+  listings   Listing[]
+  purchases  Order[]    @relation("BuyerOrders")
+  sales      Order[]    @relation("SellerOrders")
+  favorites  Favorite[]
+  addresses  Address[]
 }
 
 model Account {
@@ -78,47 +135,196 @@ model VerificationToken {
   @@id([identifier, token])
 }
 
-model Project {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+// ============================================================
+// MARKETPLACE MODELS
+// ============================================================
 
-  ownerId String
-  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+/// Hierarchical product taxonomy.
+/// Root categories have no parent (parentId IS NULL).
+/// Example tree:
+///   Women (root)
+///     └─ Tops
+///          └─ T-Shirts
+model Category {
+  id       String  @id @default(cuid())
+  name     String
+  slug     String  @unique
+  /// Null = root category.
+  parentId String?
 
-  tasks Task[]
+  parent   Category?  @relation("CategoryChildren", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryChildren")
+  listings Listing[]
+
+  @@index([parentId])
 }
 
-model Task {
-  id          String       @id @default(cuid())
+/// A fashion item listed for sale on the marketplace.
+///
+/// Soft-delete convention:
+///   deletedAt IS NULL  → active row (included in queries)
+///   deletedAt IS NOT NULL → soft-deleted (exclude from all public queries)
+///
+/// All listing list queries MUST include: `where: { deletedAt: null }`
+model Listing {
+  id          String   @id @default(cuid())
   title       String
   description String?
-  status      TaskStatus   @default(TODO)
-  priority    TaskPriority @default(MEDIUM)
-  dueDate     DateTime?
+  price       Decimal  @db.Decimal(10, 2)
+  currency    Currency @default(INR)
+  condition   ListingCondition
+  status      ListingStatus    @default(DRAFT)
+
+  // ----- Fashion metadata -----
+  brandId   String?
+  brand     Brand?   @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  size      String?
+  color     String?
+  material  String?
+
+  // ----- Timestamps -----
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  /// Non-null = soft-deleted. Preserve row to maintain order history integrity.
+  deletedAt DateTime?
+
+  // ----- Relations -----
+  sellerId   String
+  seller     User     @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  images      ListingImage[]
+  orderItems  OrderItem[]
+  favoritedBy Favorite[]
+
+  // ----- Indexes -----
+  @@index([sellerId])
+  @@index([categoryId])
+  @@index([brandId])
+  @@index([status])
+  @@index([deletedAt])
+  // Primary browse query: active, non-deleted listings
+  @@index([status, deletedAt])
+}
+
+/// Brand taxonomy entity (e.g. Nike, Zara, Vintage).
+model Brand {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  slug      String    @unique
+  logo      String?
+  listings  Listing[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+/// One image per row. Multiple images per listing, ordered by `position`.
+/// position = 0 is treated as the cover / hero image.
+model ListingImage {
+  id        String  @id @default(cuid())
+  imageUrl  String
+  /// Zero-based display order. Position 0 = cover photo.
+  position  Int     @default(0)
+  altText   String?
+
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+}
+
+/// A user's saved ("hearted") listing.
+/// One row = one favorite. The unique constraint prevents duplicates.
+/// Future: evolve into Collections by adding a collectionId FK here.
+model Favorite {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  /// One user can heart a given listing exactly once.
+  @@unique([userId, listingId])
+  @@index([userId])
+  @@index([listingId])
+}
+
+/// A shipping / billing address belonging to a user.
+/// Users may store multiple addresses.
+model Address {
+  id           String  @id @default(cuid())
+  name         String
+  phone        String?
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String?
+  postalCode   String
+  country      String
+  isDefault    Boolean @default(false)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  orders Order[]
+
+  @@index([userId])
+}
+
+/// A purchase transaction between a buyer and a seller.
+/// subtotal = sum of OrderItem.priceAtPurchase * quantity (before shipping/tax)
+/// total    = subtotal + shipping + tax (reserved for future checkout logic)
+model Order {
+  id     String      @id @default(cuid())
+  status OrderStatus @default(PENDING)
+
+  /// Snapshot totals — stored so they are immutable after checkout.
+  subtotal Decimal @db.Decimal(10, 2)
+  total    Decimal @db.Decimal(10, 2)
+  currency Currency @default(INR)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  projectId String
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  // ----- Relations -----
+  buyerId String
+  buyer   User   @relation("BuyerOrders", fields: [buyerId], references: [id], onDelete: Restrict)
 
-  assigneeId String?
-  assignee   User?   @relation("AssignedTasks", fields: [assigneeId], references: [id])
+  sellerId String
+  seller   User   @relation("SellerOrders", fields: [sellerId], references: [id], onDelete: Restrict)
 
-  comments Comment[]
+  shippingAddressId String?
+  shippingAddress   Address? @relation(fields: [shippingAddressId], references: [id], onDelete: SetNull)
+
+  items OrderItem[]
+
+  @@index([buyerId])
+  @@index([sellerId])
 }
 
-model Comment {
-  id        String   @id @default(cuid())
-  content   String
-  createdAt DateTime @default(now())
+/// A single line item within an order.
+/// priceAtPurchase captures the listing price at the moment of checkout
+/// so that future price changes or listing deletions do not corrupt order history.
+model OrderItem {
+  id              String  @id @default(cuid())
+  /// Price captured at the moment the order was placed.
+  priceAtPurchase Decimal @db.Decimal(10, 2)
+  currency        Currency @default(INR)
+  /// Usually 1 for thrift items; supports bundles.
+  quantity        Int     @default(1)
 
-  taskId String
-  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([listingId])
 }
