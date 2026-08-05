@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { FavoriteButton } from "@/components/FavoriteButton";
+import { BuyNowButton } from "@/components/BuyNowButton";
 import {
   getListingById,
   getListingFavoriteStatus,
@@ -185,12 +186,9 @@ export default async function ListingDetailPage({
 
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <FavoriteButton listingId={listing.id} initialIsFavorite={isFavorite} size="sm" />
-                <button
-                  type="button"
-                  className="inline-flex flex-1 items-center justify-center rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
-                >
-                  Buy Now
-                </button>
+                <div className="flex-1">
+                  <BuyNowButton listingId={listing.id} />
+                </div>
                 <button
                   type="button"
                   className="inline-flex flex-1 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900"
