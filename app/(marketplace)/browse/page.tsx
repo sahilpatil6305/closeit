@@ -55,14 +55,15 @@ function buildQueryString(options: {
 export default async function BrowsePage({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }): Promise<React.ReactElement> {
-  const search = normalizeParam(searchParams.search) ?? "";
-  const category = normalizeParam(searchParams.category) ?? DEFAULT_CATEGORY;
-  const brand = normalizeParam(searchParams.brand) ?? DEFAULT_BRAND;
-  const condition = normalizeParam(searchParams.condition) ?? DEFAULT_CONDITION;
-  const sort = normalizeParam(searchParams.sort) ?? DEFAULT_SORT;
-  const page = parsePage(searchParams.page);
+  const resolvedSearchParams = await searchParams;
+  const search = normalizeParam(resolvedSearchParams.search) ?? "";
+  const category = normalizeParam(resolvedSearchParams.category) ?? DEFAULT_CATEGORY;
+  const brand = normalizeParam(resolvedSearchParams.brand) ?? DEFAULT_BRAND;
+  const condition = normalizeParam(resolvedSearchParams.condition) ?? DEFAULT_CONDITION;
+  const sort = normalizeParam(resolvedSearchParams.sort) ?? DEFAULT_SORT;
+  const page = parsePage(resolvedSearchParams.page);
 
   const [filters, response] = await Promise.all([
     getFilterOptions(),

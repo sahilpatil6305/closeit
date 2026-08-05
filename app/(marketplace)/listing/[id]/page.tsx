@@ -34,10 +34,11 @@ function formatDate(dateString: string): string {
 export default async function ListingDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }): Promise<React.ReactElement> {
+  const resolvedParams = await params;
   const session = await auth();
-  const listing = await getListingById(params.id);
+  const listing = await getListingById(resolvedParams.id);
 
   if (!listing) {
     notFound();
@@ -46,7 +47,7 @@ export default async function ListingDetailPage({
   const [relatedListings, isFavorite] = await Promise.all([
     getRelatedListings(listing.category?.id ?? null, listing.id, 4),
     session?.user?.id
-      ? getListingFavoriteStatus(session.user.id, params.id)
+      ? getListingFavoriteStatus(session.user.id, resolvedParams.id)
       : Promise.resolve(false),
   ]);
 
