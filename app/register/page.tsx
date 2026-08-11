@@ -1,7 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { registerSchema } from "@/schemas/register";
+import { PASSWORD_MIN_LENGTH } from "@/lib/constants";
 
 interface FieldErrors {
   name?: string[];
@@ -10,14 +13,8 @@ interface FieldErrors {
   confirmPassword?: string[];
 }
 
-interface RegisteredUser {
-  id: string;
-  name: string | null;
-  email: string;
-  createdAt: string;
-}
-
 export default function RegisterPage(): React.ReactElement {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -30,7 +27,6 @@ export default function RegisterPage(): React.ReactElement {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
-  const [registeredUser, setRegisteredUser] = useState<RegisteredUser | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
@@ -84,7 +80,19 @@ export default function RegisterPage(): React.ReactElement {
         return;
       }
 
-      setRegisteredUser(data.user);
+      const signInResult = await signIn("credentials", {
+        email: validationResult.data.email,
+        password: validationResult.data.password,
+        redirect: false,
+      });
+
+      if (!signInResult?.ok || signInResult.error) {
+        setServerError("Your account was created, but we could not sign you in. Please try signing in.");
+        return;
+      }
+
+      router.replace("/dashboard");
+      router.refresh();
     } catch (err) {
       console.error("Submission error:", err);
       setServerError("An unexpected network error occurred. Please try again.");
@@ -94,7 +102,10 @@ export default function RegisterPage(): React.ReactElement {
   };
 
   const passwordValidationChecklist = [
-    { label: "At least 12 characters", valid: formData.password.length >= 12 },
+    {
+      label: `At least ${PASSWORD_MIN_LENGTH} characters`,
+      valid: formData.password.length >= PASSWORD_MIN_LENGTH,
+    },
     { label: "One uppercase letter (A-Z)", valid: /[A-Z]/.test(formData.password) },
     { label: "One lowercase letter (a-z)", valid: /[a-z]/.test(formData.password) },
     { label: "One number (0-9)", valid: /[0-9]/.test(formData.password) },
@@ -103,62 +114,6 @@ export default function RegisterPage(): React.ReactElement {
       valid: /[^A-Za-z0-9]/.test(formData.password),
     },
   ];
-
-  if (registeredUser) {
-    return (
-      <main className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4 sm:p-6 lg:p-8">
-        <div className="w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-8 text-center">
-          <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 mb-6">
-            <svg
-              className="w-8 h-8"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2.5}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-          </div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
-            Registration Successful!
-          </h2>
-          <p className="text-slate-600 dark:text-slate-300 mb-6 text-sm">
-            Your account has been created securely.
-          </p>
-          <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 mb-6 text-left border border-slate-100 dark:border-slate-700/50">
-            <div className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1">
-              Account Details
-            </div>
-            <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-              {registeredUser.name || "N/A"}
-            </div>
-            <div className="text-sm text-slate-600 dark:text-slate-400">
-              {registeredUser.email}
-            </div>
-          </div>
-          <button
-            onClick={() => {
-              setRegisteredUser(null);
-              setFormData({
-                name: "",
-                email: "",
-                password: "",
-                confirmPassword: "",
-              });
-            }}
-            className="w-full py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 font-medium text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
-          >
-            Register Another Account
-          </button>
-        </div>
-      </main>
-    );
-  }
 
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4 sm:p-6 lg:p-8">

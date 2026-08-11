@@ -8,9 +8,19 @@ export const authConfig = {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
       const publicRoutes = ["/", "/login", "/register"];
+      const publicPrefixes = [
+        "/browse",
+        "/listing",
+        "/user",
+        "/public",
+        "/api/listings",
+        "/api/user",
+      ];
       const isApiAuthRoute = nextUrl.pathname.startsWith("/api/auth");
       const isPublicRoute =
-        publicRoutes.includes(nextUrl.pathname) || isApiAuthRoute;
+        publicRoutes.includes(nextUrl.pathname) ||
+        publicPrefixes.some((prefix) => nextUrl.pathname.startsWith(prefix)) ||
+        isApiAuthRoute;
 
       if (
         isLoggedIn &&

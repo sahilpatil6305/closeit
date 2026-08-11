@@ -1,11 +1,24 @@
+import Image from "next/image";
 import React from "react";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { auth } from "@/auth";
+import { EmptyState } from "@/components/EmptyState";
+import { ListingCard } from "@/components/listing/ListingCard";
+import { getProfileOverview } from "@/lib/profile/service";
 
 export const metadata = {
   title: "Profile",
   description: "Your Closeit seller profile.",
 };
+
+function formatDate(dateString: string): string {
+  return new Date(dateString).toLocaleDateString("en-IN", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
 
 function getInitials(name?: string | null): string {
   if (!name) return "U";
@@ -19,62 +32,170 @@ function getInitials(name?: string | null): string {
 
 export default async function ProfilePage(): Promise<React.ReactElement> {
   const session = await auth();
-  const user = session?.user;
+  const userId = session?.user?.id;
+
+  if (!userId) {
+    notFound();
+  }
+
+  const profile = await getProfileOverview(userId);
+  if (!profile) {
+    notFound();
+  }
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      {/* ─── Profile Banner ──────────────────────────────────── */}
-      <div className="bg-white dark:bg-slate-800/90 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-700/80 shadow-sm flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
-        {/* Avatar */}
-        <div
-          aria-label={`Avatar for ${user?.name ?? "Member"}`}
-          className="shrink-0 w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-600 via-violet-600 to-pink-500 text-white font-bold text-2xl flex items-center justify-center shadow-lg shadow-indigo-600/20"
-        >
-          {getInitials(user?.name)}
-        </div>
+    <div className="space-y-8 max-w-6xl">
+      <div className="grid gap-6 xl:grid-cols-[1.3fr_1fr]">
+        <div className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm p-6">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
+            <div className="relative flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-950 h-28 w-28 overflow-hidden">
+              {profile.avatar ? (
+                <Image
+                  src={profile.avatar}
+                  alt={profile.displayName ?? profile.username ?? profile.email}
+                  fill
+                  unoptimized
+                  className="object-cover"
+                />
+              ) : (
+                <span className="text-3xl font-bold text-slate-700 dark:text-slate-200">
+                  {getInitials(profile.displayName ?? profile.email)}
+                </span>
+              )}
+            </div>
 
-        {/* Info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-                {user?.name ?? "Marketplace Member"}
-              </h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                {user?.email}
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="text-3xl font-bold text-slate-900 dark:text-white truncate">
+                  {profile.displayName ?? profile.username ?? profile.email}
+                </h1>
+                {profile.username ? (
+                  <span className="text-sm text-slate-500 dark:text-slate-400">
+                    @{profile.username}
+                  </span>
+                ) : null}
+              </div>
+              <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
+                {profile.bio ?? "No bio yet. Share a little about your style and what you sell."}
               </p>
             </div>
-            <Link
-              href="/settings"
-              className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-semibold text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              Edit Profile
-            </Link>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-center sm:justify-start gap-2">
-            <span className="px-2.5 py-1 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs font-semibold">
-              Verified Member
-            </span>
+          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-3xl bg-slate-50 dark:bg-slate-950/80 p-5">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                Email
+              </p>
+              <p className="mt-2 text-sm text-slate-900 dark:text-white break-all">
+                {profile.email}
+              </p>
+            </div>
+            <div className="rounded-3xl bg-slate-50 dark:bg-slate-950/80 p-5">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                Phone
+              </p>
+              <p className="mt-2 text-sm text-slate-900 dark:text-white">
+                {profile.phone ?? "Not provided"}
+              </p>
+            </div>
+            <div className="rounded-3xl bg-slate-50 dark:bg-slate-950/80 p-5">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                Location
+              </p>
+              <p className="mt-2 text-sm text-slate-900 dark:text-white">
+                {profile.city ?? ""}{profile.city && profile.country ? ", " : ""}{profile.country ?? "Not provided"}
+              </p>
+            </div>
+            <div className="rounded-3xl bg-slate-50 dark:bg-slate-950/80 p-5">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                Joined
+              </p>
+              <p className="mt-2 text-sm text-slate-900 dark:text-white">
+                {formatDate(profile.createdAt)}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link
+              href="/settings"
+              className="inline-flex items-center justify-center rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors"
+            >
+              Edit profile
+            </Link>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm p-6">
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">
+            Marketplace Summary
+          </h2>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-3xl bg-slate-50 dark:bg-slate-950/80 p-5">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                Active listings
+              </p>
+              <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
+                {profile.activeListingsCount}
+              </p>
+            </div>
+            <div className="rounded-3xl bg-slate-50 dark:bg-slate-950/80 p-5">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                Sold items
+              </p>
+              <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
+                {profile.soldItemsCount}
+              </p>
+            </div>
+            <div className="rounded-3xl bg-slate-50 dark:bg-slate-950/80 p-5">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                Purchased items
+              </p>
+              <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
+                {profile.purchasedItemsCount}
+              </p>
+            </div>
+            <div className="rounded-3xl bg-slate-50 dark:bg-slate-950/80 p-5">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                Wishlist count
+              </p>
+              <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
+                {profile.wishlistCount}
+              </p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ─── Closet / Listings ───────────────────────────────── */}
-      <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 p-6 space-y-4 shadow-sm">
-        <h2 className="text-base font-bold text-slate-900 dark:text-white">
-          My Closet
-        </h2>
-        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-          Your listed items will appear here once you start selling. Build your reputation
-          as a trusted seller on Closeit.
-        </p>
-        <Link
-          href="/sell"
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-        >
-          List Item in Closet
-        </Link>
+      <div className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Recent listings</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Your latest items on Closeit.
+            </p>
+          </div>
+          <Link
+            href="/listings"
+            className="text-sm font-semibold text-indigo-600 hover:text-indigo-500"
+          >
+            View all listings
+          </Link>
+        </div>
+
+        {profile.recentListings.length === 0 ? (
+          <EmptyState
+            title="No recent listings"
+            description="Add your first item to start building your marketplace profile."
+            action={{ label: "List an item", href: "/sell" }}
+          />
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {profile.recentListings.map((listing) => (
+              <ListingCard key={listing.id} listing={listing} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
