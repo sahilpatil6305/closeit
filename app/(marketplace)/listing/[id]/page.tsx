@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { FavoriteButton } from "@/components/FavoriteButton";
 import { BuyNowButton } from "@/components/BuyNowButton";
+import { StartConversationButton } from "@/components/messages/StartConversationButton";
 import {
   getListingById,
   getListingFavoriteStatus,
@@ -164,9 +165,18 @@ export default async function ListingDetailPage({
                   />
                 </div>
                 <div>
-                  <p className="text-base font-semibold text-slate-900 dark:text-white">
-                    {listing.seller.displayName || listing.seller.name || "Seller"}
-                  </p>
+                  {listing.seller.username ? (
+                    <Link
+                      href={`/user/${listing.seller.username}`}
+                      className="text-base font-semibold text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                    >
+                      {listing.seller.displayName || listing.seller.name || "Seller"}
+                    </Link>
+                  ) : (
+                    <p className="text-base font-semibold text-slate-900 dark:text-white">
+                      {listing.seller.displayName || listing.seller.name || "Seller"}
+                    </p>
+                  )}
                   <p className="text-sm text-slate-500 dark:text-slate-400">
                     @{listing.seller.username ?? "anonymous"}
                   </p>
@@ -189,12 +199,10 @@ export default async function ListingDetailPage({
                 <div className="flex-1">
                   <BuyNowButton listingId={listing.id} />
                 </div>
-                <button
-                  type="button"
-                  className="inline-flex flex-1 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900"
-                >
-                  Contact Seller
-                </button>
+                <StartConversationButton
+                  participantId={listing.seller.id}
+                  disabled={session?.user?.id === listing.seller.id}
+                />
               </div>
             </div>
 

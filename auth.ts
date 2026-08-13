@@ -11,6 +11,7 @@ import { env } from "@/lib/env";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
+  trustHost: true,
   adapter: PrismaAdapter(
     prisma as unknown as Parameters<typeof PrismaAdapter>[0]
   ) as Adapter,
@@ -24,6 +25,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   secret: env.AUTH_SECRET,
+  pages: {
+    signIn: "/login",
+    error: "/login",
+  },
   providers: [
     Credentials({
       name: "Credentials",

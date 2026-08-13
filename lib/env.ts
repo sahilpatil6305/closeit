@@ -7,6 +7,16 @@ const envSchema = z.object({
   AUTH_SECRET: z
     .string()
     .min(1, { message: "AUTH_SECRET environment variable is required." }),
+  NEXTAUTH_URL: z
+    .string()
+    .url()
+    .optional()
+    .default("http://localhost:3000"),
+  AUTH_URL: z
+    .string()
+    .url()
+    .optional()
+    .default("http://localhost:3000"),
 });
 
 const parseEnv = () => {

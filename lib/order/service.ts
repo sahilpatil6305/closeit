@@ -110,6 +110,18 @@ export async function createOrder(
     throw new Error("You cannot purchase your own listing.");
   }
 
+  const existingPurchase = await prisma.orderItem.findFirst({
+    where: {
+      listingId: listing.id,
+      order: { buyerId },
+    },
+    select: { id: true },
+  });
+
+  if (existingPurchase) {
+    throw new Error("You have already purchased this listing.");
+  }
+
   const order = await prisma.$transaction(async (tx) => {
     const createdOrder = await tx.order.create({
       data: {

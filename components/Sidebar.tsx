@@ -7,17 +7,20 @@ import { usePathname } from "next/navigation";
 export interface SidebarProps {
   mobileOpen?: boolean;
   onMobileClose?: () => void;
+  unreadMessageCount?: number;
 }
 
 interface NavItem {
   label: string;
   href: string;
   icon: React.ReactNode;
+  badge?: number;
 }
 
 export function Sidebar({
   mobileOpen = false,
   onMobileClose,
+  unreadMessageCount = 0,
 }: SidebarProps): React.ReactElement {
   const pathname = usePathname();
 
@@ -88,6 +91,21 @@ export function Sidebar({
             strokeLinejoin="round"
             strokeWidth={1.75}
             d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+          />
+        </svg>
+      ),
+    },
+    {
+      label: "Messages",
+      href: "/messages",
+      badge: unreadMessageCount,
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.75}
+            d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.77 9.77 0 01-4.255-.964L3 20l1.155-3.465A7.548 7.548 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
           />
         </svg>
       ),
@@ -187,6 +205,11 @@ export function Sidebar({
                 </span>
                 <span>{item.label}</span>
               </div>
+              {item.badge ? (
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1 text-[10px] font-bold text-white">
+                  {item.badge > 99 ? "99+" : item.badge}
+                </span>
+              ) : null}
             </Link>
           );
         })}

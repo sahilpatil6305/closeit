@@ -106,13 +106,6 @@ export default function RegisterPage(): React.ReactElement {
       label: `At least ${PASSWORD_MIN_LENGTH} characters`,
       valid: formData.password.length >= PASSWORD_MIN_LENGTH,
     },
-    { label: "One uppercase letter (A-Z)", valid: /[A-Z]/.test(formData.password) },
-    { label: "One lowercase letter (a-z)", valid: /[a-z]/.test(formData.password) },
-    { label: "One number (0-9)", valid: /[0-9]/.test(formData.password) },
-    {
-      label: "One special character (!@#$%...)",
-      valid: /[^A-Za-z0-9]/.test(formData.password),
-    },
   ];
 
   return (

@@ -94,6 +94,9 @@ model User {
   sales      Order[]    @relation("SellerOrders")
   favorites  Favorite[]
   addresses  Address[]
+  conversationsStarted Conversation[] @relation("ConversationParticipantOne")
+  conversationsReceived Conversation[] @relation("ConversationParticipantTwo")
+  sentMessages Message[]
 }
 
 model Account {
@@ -253,6 +256,46 @@ model Favorite {
   @@unique([userId, listingId])
   @@index([userId])
   @@index([listingId])
+}
+
+/// A private, direct-message thread between exactly two users.
+/// Participant IDs are stored in canonical lexical order by the message service,
+/// allowing the composite unique constraint to prevent duplicate threads.
+model Conversation {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastMessageAt DateTime @default(now())
+
+  participantOneId String
+  participantOne   User   @relation("ConversationParticipantOne", fields: [participantOneId], references: [id], onDelete: Restrict)
+
+  participantTwoId String
+  participantTwo   User   @relation("ConversationParticipantTwo", fields: [participantTwoId], references: [id], onDelete: Restrict)
+
+  messages Message[]
+
+  @@unique([participantOneId, participantTwoId])
+  @@index([participantOneId, lastMessageAt])
+  @@index([participantTwoId, lastMessageAt])
+}
+
+/// An individual direct message. `readAt` is null until the recipient opens
+/// the conversation, enabling efficient unread counts.
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  readAt    DateTime?
+
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  senderId String
+  sender   User   @relation(fields: [senderId], references: [id], onDelete: Restrict)
+
+  @@index([conversationId, createdAt])
+  @@index([senderId, readAt])
 }
 
 /// A shipping / billing address belonging to a user.

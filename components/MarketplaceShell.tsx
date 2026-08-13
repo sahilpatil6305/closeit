@@ -10,11 +10,13 @@ export interface MarketplaceShellProps {
     email?: string | null;
     image?: string | null;
   };
+  unreadMessageCount?: number;
   children: React.ReactNode;
 }
 
 export function MarketplaceShell({
   user,
+  unreadMessageCount = 0,
   children,
 }: MarketplaceShellProps): React.ReactElement {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
@@ -29,6 +31,7 @@ export function MarketplaceShell({
         <Sidebar
           mobileOpen={mobileMenuOpen}
           onMobileClose={() => setMobileMenuOpen(false)}
+          unreadMessageCount={unreadMessageCount}
         />
         <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">
           {children}
