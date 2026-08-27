@@ -48,3 +48,6 @@ next-env.d.ts
 .windsurf/
 skills-lock.json
 test-db-connection.ts
+
+# Local Netlify folder
+.netlify

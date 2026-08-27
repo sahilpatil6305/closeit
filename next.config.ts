@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Permit the machine's LAN host to load Next.js development resources
   // (including HMR) while running `next dev`.
-  allowedDevOrigins: ["172.20.3.254"],
+  allowedDevOrigins: ['172.20.124.7'],
   images: {
     remotePatterns: [
       {
